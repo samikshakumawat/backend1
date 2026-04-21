@@ -1,5 +1,9 @@
 const express = require("express");
 const Product = require("../models/Product");
+const {
+  normalizeStoredImagePath,
+  serializeProductForResponse
+} = require("../utils/imagePaths");
 
 const router = express.Router();
 const CATEGORY_SORT_DESC = { createdAt: -1, _id: -1 };
@@ -48,7 +52,7 @@ function getCurrentPayload(body = {}) {
     payload.price = source.price || "";
   }
   if (Object.prototype.hasOwnProperty.call(source, "image")) {
-    payload.image = source.image || "";
+    payload.image = normalizeStoredImagePath(source.image || "");
   }
   if (Object.prototype.hasOwnProperty.call(source, "categoryIcon")) {
     payload.categoryIcon = source.categoryIcon || "";
@@ -72,7 +76,7 @@ function pushHistory(product) {
 router.get("/", async (_req, res) => {
   try {
     const products = await Product.find().sort({ category: 1, createdAt: -1 });
-    res.json(products);
+    res.json(products.map((product) => serializeProductForResponse(_req, product)));
   } catch (err) {
     console.error("Fetch products failed:", err);
     res.status(500).json({ message: "Error fetching products" });
@@ -102,7 +106,7 @@ router.post("/", async (req, res) => {
       history: []
     });
 
-    res.status(201).json(product);
+    res.status(201).json(serializeProductForResponse(req, product));
   } catch (err) {
     console.error("Create product failed:", err);
     res.status(500).json({ message: "Create failed" });
@@ -112,7 +116,7 @@ router.post("/", async (req, res) => {
 router.get("/category/:category/all", async (req, res) => {
   try {
     const products = await Product.find({ category: req.params.category }).sort(CATEGORY_SORT_ASC);
-    res.json(products);
+    res.json(products.map((product) => serializeProductForResponse(req, product)));
   } catch (err) {
     console.error("Fetch category products failed:", err);
     res.status(500).json({ message: "Error fetching products" });
@@ -127,7 +131,7 @@ router.get("/category/:category", async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json(product);
+    res.json(serializeProductForResponse(req, product));
   } catch (err) {
     console.error("Fetch category product failed:", err);
     res.status(500).json({ message: "Error fetching product" });
@@ -141,7 +145,7 @@ router.get("/item/:id", async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    res.json(product);
+    res.json(serializeProductForResponse(req, product));
   } catch (err) {
     console.error("Fetch product by id failed:", err);
     res.status(500).json({ message: "Error fetching product" });
@@ -159,7 +163,10 @@ router.put("/item/:id", async (req, res) => {
     product.current = { ...product.current, ...getCurrentPayload(req.body) };
     await product.save();
 
-    res.json({ message: "Product updated successfully", product });
+    res.json({
+      message: "Product updated successfully",
+      product: serializeProductForResponse(req, product)
+    });
   } catch (err) {
     console.error("Update product by id failed:", err);
     res.status(500).json({ message: "Update failed" });
@@ -192,7 +199,10 @@ router.put("/:category", async (req, res) => {
     product.current = { ...product.current, ...getCurrentPayload(req.body) };
     await product.save();
 
-    res.json({ message: "Product updated successfully", product });
+    res.json({
+      message: "Product updated successfully",
+      product: serializeProductForResponse(req, product)
+    });
   } catch (err) {
     console.error("Update product failed:", err);
     res.status(500).json({ message: "Update failed" });
