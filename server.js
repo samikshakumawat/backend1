@@ -27,6 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static("uploads"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/assets", express.static("frontend/assets"));
 app.use("/assets", express.static(path.join(__dirname, "..", "frontend", "assets")));
 
