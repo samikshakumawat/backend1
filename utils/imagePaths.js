@@ -76,6 +76,12 @@ function buildPublicFileUrl(req, storedPath) {
   return `${baseUrl}${normalized.startsWith("/") ? "" : "/"}${normalized}`;
 }
 
+function buildPublicCategoryIconUrl(req, storedPath) {
+  const normalized = normalizeStoredImagePath(storedPath);
+  if (!normalized || normalized === DEFAULT_IMAGE_PATH) return "";
+  return buildPublicFileUrl(req, normalized);
+}
+
 function serializeProductForResponse(req, productDoc) {
   const product = productDoc && typeof productDoc.toObject === "function"
     ? productDoc.toObject()
@@ -83,14 +89,14 @@ function serializeProductForResponse(req, productDoc) {
 
   if (product.current) {
     product.current.image = buildPublicFileUrl(req, product.current.image);
-    product.current.categoryIcon = buildPublicFileUrl(req, product.current.categoryIcon);
+    product.current.categoryIcon = buildPublicCategoryIconUrl(req, product.current.categoryIcon);
   }
 
   if (Array.isArray(product.history)) {
     product.history = product.history.map((entry) => ({
       ...entry,
       image: buildPublicFileUrl(req, entry.image),
-      categoryIcon: buildPublicFileUrl(req, entry.categoryIcon)
+      categoryIcon: buildPublicCategoryIconUrl(req, entry.categoryIcon)
     }));
   }
 
