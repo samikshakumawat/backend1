@@ -1,6 +1,7 @@
 const express = require("express");
 const Product = require("../models/Product");
 const {
+  DEFAULT_IMAGE_PATH,
   normalizeStoredImagePath,
   serializeProductForResponse
 } = require("../utils/imagePaths");
@@ -52,10 +53,10 @@ function getCurrentPayload(body = {}) {
     payload.price = source.price || "";
   }
   if (Object.prototype.hasOwnProperty.call(source, "image")) {
-    payload.image = normalizeStoredImagePath(source.image || "");
+    payload.image = normalizeStoredImagePath(source.image || "") || DEFAULT_IMAGE_PATH;
   }
   if (Object.prototype.hasOwnProperty.call(source, "categoryIcon")) {
-    payload.categoryIcon = source.categoryIcon || "";
+    payload.categoryIcon = normalizeStoredImagePath(source.categoryIcon || "");
   }
 
   return payload;
@@ -67,7 +68,7 @@ function pushHistory(product) {
     shortDescription: product.current?.shortDescription || "",
     specs: Array.isArray(product.current?.specs) ? product.current.specs : [],
     price: product.current?.price || "",
-    image: product.current?.image || "",
+    image: normalizeStoredImagePath(product.current?.image || "") || DEFAULT_IMAGE_PATH,
     categoryIcon: product.current?.categoryIcon || "",
     updatedAt: new Date()
   });
@@ -99,7 +100,7 @@ router.post("/", async (req, res) => {
         shortDescription: "",
         specs: [],
         price: "",
-        image: "",
+        image: DEFAULT_IMAGE_PATH,
         categoryIcon: "",
         ...getCurrentPayload(req.body)
       },

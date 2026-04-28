@@ -2,6 +2,7 @@ const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const dns = require("dns");
+const fs = require("fs");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -10,6 +11,9 @@ const productRoutes = require("./routes/productRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const imageRoutes = require("./routes/imageRoutes");
+const Product = require("./models/Product");
+const Image = require("./models/Image");
+const { DEFAULT_IMAGE_PATH, normalizeStoredImagePath } = require("./utils/imagePaths");
 
 const app = express();
 
@@ -21,8 +25,10 @@ app.use(cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Optional: serve uploads if needed
+app.use("/uploads", express.static("uploads"));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/assets", express.static("frontend/assets"));
+app.use("/assets", express.static(path.join(__dirname, "..", "frontend", "assets")));
 
 // ============================
 // API ROUTES
@@ -76,6 +82,107 @@ function logMongoError(err) {
   }
 }
 
+async function normalizeExistingImagePaths() {
+  let updatedProducts = 0;
+  let updatedImages = 0;
+
+  function getValidImagePath(imagePath) {
+    const normalized = normalizeStoredImagePath(imagePath);
+    if (!normalized) return DEFAULT_IMAGE_PATH;
+
+    if (normalized.startsWith("http://") || normalized.startsWith("https://") || normalized.startsWith("data:")) {
+      return normalized;
+    }
+
+    const cleanPath = normalized.replace(/\\/g, "/").replace(/^(\.\.\/|\.\/)+/, "").replace(/^\/+/, "");
+
+    if (cleanPath.startsWith("uploads/")) {
+      return fs.existsSync(path.join(__dirname, cleanPath)) ? cleanPath : DEFAULT_IMAGE_PATH;
+    }
+
+    if (cleanPath.startsWith("assets/")) {
+      return fs.existsSync(path.join(__dirname, "..", "frontend", cleanPath)) ? cleanPath : DEFAULT_IMAGE_PATH;
+    }
+
+    if (cleanPath.startsWith("images/")) {
+      const assetPath = `assets/${cleanPath}`;
+      return fs.existsSync(path.join(__dirname, "..", "frontend", assetPath)) ? assetPath : DEFAULT_IMAGE_PATH;
+    }
+
+    const uploadsPath = `uploads/${cleanPath}`;
+    if (fs.existsSync(path.join(__dirname, uploadsPath))) {
+      return uploadsPath;
+    }
+
+    const assetImagePath = `assets/images/${cleanPath}`;
+    if (fs.existsSync(path.join(__dirname, "..", "frontend", assetImagePath))) {
+      return assetImagePath;
+    }
+
+    return DEFAULT_IMAGE_PATH;
+  }
+
+  const products = await Product.find();
+  for (const product of products) {
+    let changed = false;
+
+    if (product.current) {
+      const normalized = getValidImagePath(product.current.image);
+      if (normalized !== product.current.image) {
+        product.current.image = normalized;
+        changed = true;
+      }
+
+      if (product.current.categoryIcon) {
+        const normalizedIcon = getValidImagePath(product.current.categoryIcon);
+        if (normalizedIcon !== product.current.categoryIcon) {
+          product.current.categoryIcon = normalizedIcon;
+          changed = true;
+        }
+      }
+    }
+
+    if (Array.isArray(product.history)) {
+      product.history.forEach((entry) => {
+        if (!entry) return;
+
+        const normalized = getValidImagePath(entry.image);
+        if (normalized !== entry.image) {
+          entry.image = normalized;
+          changed = true;
+        }
+
+        if (entry.categoryIcon) {
+          const normalizedIcon = getValidImagePath(entry.categoryIcon);
+          if (normalizedIcon !== entry.categoryIcon) {
+            entry.categoryIcon = normalizedIcon;
+            changed = true;
+          }
+        }
+      });
+    }
+
+    if (changed) {
+      await product.save();
+      updatedProducts += 1;
+    }
+  }
+
+  const images = await Image.find();
+  for (const image of images) {
+    const normalized = getValidImagePath(image.path);
+    if (normalized !== image.path) {
+      image.path = normalized;
+      await image.save();
+      updatedImages += 1;
+    }
+  }
+
+  if (updatedProducts || updatedImages) {
+    console.log(`Normalized image paths: ${updatedProducts} products, ${updatedImages} images`);
+  }
+}
+
 if (!mongoUri) {
   console.error("MONGODB_URI is not set. Add it to backend1/.env before starting the server.");
   process.exit(1);
@@ -83,8 +190,9 @@ if (!mongoUri) {
 
 mongoose
   .connect(mongoUri)
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB connected");
+    await normalizeExistingImagePaths();
 
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);

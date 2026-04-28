@@ -1,5 +1,7 @@
 const path = require("path");
 
+const DEFAULT_IMAGE_PATH = "assets/images/default.png";
+
 function getUploadRelativePath(fileName = "") {
   const safeName = path.basename(String(fileName || "").trim());
   return safeName ? `/uploads/${safeName}` : "";
@@ -88,6 +90,7 @@ function serializeImageForResponse(req, imageDoc) {
 }
 
 module.exports = {
+  DEFAULT_IMAGE_PATH,
   buildPublicFileUrl,
   getUploadRelativePath,
   normalizeStoredImagePath,
