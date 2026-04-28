@@ -1,6 +1,13 @@
 const path = require("path");
 
 const DEFAULT_IMAGE_PATH = "assets/images/default.png";
+const CATEGORY_ICON_PATHS = {
+  "new-laptop": "assets/images/new-laptop.png",
+  "refurbished-laptop": "assets/images/refurbished-laptop.png",
+  accessories: "assets/images/accessories.png",
+  "custom-pc-build": "assets/images/custom-pc.png",
+  printers: "assets/images/printers.png"
+};
 
 function getUploadRelativePath(fileName = "") {
   const safeName = path.basename(String(fileName || "").trim());
@@ -76,9 +83,11 @@ function buildPublicFileUrl(req, storedPath) {
   return `${baseUrl}${normalized.startsWith("/") ? "" : "/"}${normalized}`;
 }
 
-function buildPublicCategoryIconUrl(req, storedPath) {
+function buildPublicCategoryIconUrl(req, storedPath, category) {
   const normalized = normalizeStoredImagePath(storedPath);
-  if (!normalized || normalized === DEFAULT_IMAGE_PATH) return "";
+  if (!normalized || normalized === DEFAULT_IMAGE_PATH) {
+    return buildPublicFileUrl(req, CATEGORY_ICON_PATHS[category] || "");
+  }
   return buildPublicFileUrl(req, normalized);
 }
 
@@ -89,7 +98,7 @@ function serializeProductForResponse(req, productDoc) {
 
   if (product.current) {
     product.current.image = buildPublicFileUrl(req, product.current.image);
-    product.current.categoryIcon = buildPublicCategoryIconUrl(req, product.current.categoryIcon);
+    product.current.categoryIcon = buildPublicCategoryIconUrl(req, product.current.categoryIcon, product.category);
   }
 
   if (Array.isArray(product.history)) {
