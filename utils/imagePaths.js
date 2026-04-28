@@ -4,7 +4,7 @@ const DEFAULT_IMAGE_PATH = "assets/images/default.png";
 
 function getUploadRelativePath(fileName = "") {
   const safeName = path.basename(String(fileName || "").trim());
-  return safeName ? `/uploads/${safeName}` : "";
+  return safeName ? `uploads/${safeName}` : "";
 }
 
 function normalizeStoredImagePath(value) {
@@ -18,7 +18,10 @@ function normalizeStoredImagePath(value) {
       const parsed = new URL(normalized);
       const pathname = parsed.pathname || "";
       if (pathname.includes("/uploads/")) {
-        return pathname.substring(pathname.indexOf("/uploads/"));
+        return pathname.substring(pathname.indexOf("/uploads/") + 1);
+      }
+      if (pathname.includes("/assets/")) {
+        return pathname.substring(pathname.indexOf("/assets/") + 1);
       }
       return normalized;
     } catch (_err) {
@@ -31,15 +34,31 @@ function normalizeStoredImagePath(value) {
   }
 
   if (normalized.includes("/uploads/")) {
-    return normalized.substring(normalized.indexOf("/uploads/"));
+    return normalized.substring(normalized.indexOf("/uploads/") + 1);
+  }
+
+  if (normalized.includes("/assets/")) {
+    return normalized.substring(normalized.indexOf("/assets/") + 1);
   }
 
   if (normalized.startsWith("uploads/")) {
-    return `/${normalized}`;
+    return normalized;
   }
 
   if (normalized.startsWith("/uploads/")) {
+    return normalized.replace(/^\/+/, "");
+  }
+
+  if (normalized.startsWith("assets/")) {
     return normalized;
+  }
+
+  if (normalized.startsWith("/assets/")) {
+    return normalized.replace(/^\/+/, "");
+  }
+
+  if (normalized.startsWith("../assets/") || normalized.startsWith("./assets/")) {
+    return normalized.replace(/^(\.\.\/|\.\/)+/, "");
   }
 
   const fileName = path.basename(normalized);
@@ -64,12 +83,14 @@ function serializeProductForResponse(req, productDoc) {
 
   if (product.current) {
     product.current.image = buildPublicFileUrl(req, product.current.image);
+    product.current.categoryIcon = buildPublicFileUrl(req, product.current.categoryIcon);
   }
 
   if (Array.isArray(product.history)) {
     product.history = product.history.map((entry) => ({
       ...entry,
-      image: buildPublicFileUrl(req, entry.image)
+      image: buildPublicFileUrl(req, entry.image),
+      categoryIcon: buildPublicFileUrl(req, entry.categoryIcon)
     }));
   }
 
