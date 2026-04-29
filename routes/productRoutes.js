@@ -1,5 +1,6 @@
 const express = require("express");
 const Product = require("../models/Product");
+const auth = require("../middleware/auth");
 const {
   DEFAULT_IMAGE_PATH,
   normalizeStoredImagePath,
@@ -84,7 +85,7 @@ router.get("/", async (_req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", auth, async (req, res) => {
   try {
     await ensureCategoryIsNotUnique();
 
@@ -153,7 +154,7 @@ router.get("/item/:id", async (req, res) => {
   }
 });
 
-router.put("/item/:id", async (req, res) => {
+router.put("/item/:id", auth, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -174,7 +175,7 @@ router.put("/item/:id", async (req, res) => {
   }
 });
 
-router.delete("/item/:id", async (req, res) => {
+router.delete("/item/:id", auth, async (req, res) => {
   try {
     const deleted = await Product.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -189,7 +190,7 @@ router.delete("/item/:id", async (req, res) => {
 });
 
 // Legacy category update route: updates latest product inside that category.
-router.put("/:category", async (req, res) => {
+router.put("/:category", auth, async (req, res) => {
   try {
     const product = await Product.findOne({ category: req.params.category }).sort(CATEGORY_SORT_DESC);
     if (!product) {
@@ -211,7 +212,7 @@ router.put("/:category", async (req, res) => {
 });
 
 // Legacy category delete route: deletes latest product inside that category.
-router.delete("/:category", async (req, res) => {
+router.delete("/:category", auth, async (req, res) => {
   try {
     const latest = await Product.findOne({ category: req.params.category }).sort(CATEGORY_SORT_DESC);
     if (!latest) {

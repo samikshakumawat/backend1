@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Admin = require("../models/Admin");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
@@ -36,7 +37,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", auth, async (req, res) => {
   try {
     const { username, newPassword } = req.body;
 
