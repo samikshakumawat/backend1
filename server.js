@@ -32,6 +32,16 @@ app.use("/assets", express.static("frontend/assets"));
 app.use("/assets", express.static(path.join(__dirname, "..", "frontend", "assets")));
 
 // ============================
+// STATIC FILE SERVING (frontend + admin)
+// ============================
+
+const frontendDir = path.join(__dirname, "..", "frontend");
+const adminDir = path.join(__dirname, "..", "admin");
+
+app.use("/frontend", express.static(frontendDir));
+app.use("/admin", express.static(adminDir));
+
+// ============================
 // API ROUTES
 // ============================
 
@@ -41,11 +51,11 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/admin", imageRoutes);
 
 // ============================
-// ROOT ROUTE (for testing)
+// ROOT ROUTE - redirect to frontend
 // ============================
 
 app.get("/", (_req, res) => {
-  res.send("API is running");
+  res.redirect("/frontend/index.html");
 });
 
 // ============================
